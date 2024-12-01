@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your AI Finder for PPP</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #ffffff;
+            color: #333333;
+        }
+        .chat-container {
+            max-width: 800px;
+            margin: 50px auto;
+            background: #f9f9f9;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .chat-header {
+            background: #0066cc;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.5rem;
+            position: relative;
+        }
+        .chat-history {
+            height: 500px;
+            overflow-y: auto;
+            padding: 15px;
+            background: #ffffff;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .chat-message-container {
+            display: flex;
+            align-items: flex-start;
+            margin: 10px 0;
+        }
+        .chat-avatar {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+            border-radius: 50%;
+            background: #eeeeee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #333333;
+        }
+        .chat-message {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            display: inline-block;
+            word-wrap: break-word;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .user-message {
+            background: #e6f7ff;
+            color: #004080;
+            align-self: flex-end;
+        }
+        .assistant-message {
+            background: #f0f0f0;
+            color: #333333;
+            align-self: flex-start;
+        }
+        .chat-footer {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            background: #f9f9f9;
+            border-top: 1px solid #e0e0e0;
+        }
+        .chat-footer textarea {
+            flex-grow: 1;
+            resize: none;
+            border-radius: 5px;
+            padding: 10px;
+            margin-right: 10px;
+            background: #ffffff;
+            color: #333333;
+            border: 1px solid #cccccc;
+        }
+        .chat-footer textarea:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+        .chat-footer button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .chat-footer button:hover {
+            background: #0055a3;
+        }
+        .clear-chat {
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            transform: translateY(-50%);
+            background: #d9534f;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .clear-chat:hover {
+            background: #c9302c;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            Your AI Finder for PPP
+            <button class="clear-chat" id="clearButton">Clear Chat</button>
+        </div>
+        <div class="chat-history" id="chatHistory"></div>
+        <div class="chat-footer">
+            <input type="file" id="fileInput" class="file-upload" accept=".pdf,.docx,.txt">
+            <textarea id="userInput" placeholder="Type your message..."></textarea>
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatHistory = document.getElementById("chatHistory");
+        const userInput = document.getElementById("userInput");
+        const sendButton = document.getElementById("sendButton");
+        const fileInput = document.getElementById("fileInput");
+        const clearButton = document.getElementById("clearButton");
+
+        function addMessage(role, message) {
+            const messageContainer = document.createElement("div");
+            messageContainer.className = "chat-message-container";
+
+            const avatar = document.createElement("div");
+            avatar.className = "chat-avatar";
+            avatar.textContent = role === "user" ? "U" : "AI";
+
+            const messageDiv = document.createElement("div");
+            messageDiv.className = `chat-message ${role}-message`;
+            messageDiv.textContent = message;
+
+            messageContainer.appendChild(avatar);
+            messageContainer.appendChild(messageDiv);
+            chatHistory.appendChild(messageContainer);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        sendButton.addEventListener("click", async () => {
+            const userMessage = userInput.value.trim();
+            const file = fileInput.files[0];
+
+            if (!userMessage && !file) {
+                alert("Please enter a message or upload a file.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("user_input", userMessage);
+            if (file) {
+                formData.append("file", file);
+            }
+
+            addMessage("user", userMessage || "File uploaded.");
+
+            userInput.value = "";
+            fileInput.value = "";
+
+            try {
+                const response = await fetch("/ask", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                const data = await response.json();
+                if (data.answer) {
+                    addMessage("assistant", data.answer);
+                } else {
+                    addMessage("assistant", `Error: ${data.error}`);
+                }
+            } catch (error) {
+                addMessage("assistant", `Error: ${error.message}`);
+            }
+        });
+
+        clearButton.addEventListener("click", async () => {
+            try {
+                await fetch("/clear", { method: "POST" });
+                chatHistory.innerHTML = ""; 
+                addMessage("assistant", "Chat history cleared.");
+            } catch (error) {
+                addMessage("assistant", `Error clearing chat history: ${error.message}`);
+            }
+        });
+    </script>
+</body>
+</html>
